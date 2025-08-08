@@ -1,204 +1,252 @@
--- Control Player Script for Delta Executor
--- Includes GUI for easy control
+-- Enhanced Teleport Calculator with Advanced Features
+-- Works with Delta/Synapse/Krnl
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 
--- GUI Setup
+-- Anti-detection variables
+local ProtectedMode = true
+local TeleportHistory = {}
+local LastTeleportTime = 0
+
+-- GUI Construction
 local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "TeleportPro"
+ScreenGui.Parent = game:GetService("CoreGui")
+ScreenGui.ResetOnSpawn = false
+
 local MainFrame = Instance.new("Frame")
-local Title = Instance.new("TextLabel")
-local PlayerList = Instance.new("ScrollingFrame")
-local ControlFrame = Instance.new("Frame")
-local MoveButtons = {
-    Forward = Instance.new("TextButton"),
-    Backward = Instance.new("TextButton"),
-    Left = Instance.new("TextButton"),
-    Right = Instance.new("TextButton")
-}
-local TeleportBtn = Instance.new("TextButton")
-local FreezeBtn = Instance.new("TextButton")
-local CloseBtn = Instance.new("TextButton")
-
-ScreenGui.Name = "ControlGUI"
-ScreenGui.Parent = game.CoreGui
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-
-MainFrame.Name = "MainFrame"
-MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+MainFrame.Size = UDim2.new(0, 350, 0, 420)
+MainFrame.Position = UDim2.new(0.5, -175, 0.5, -210)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 MainFrame.BorderSizePixel = 0
-MainFrame.Position = UDim2.new(0.5, -175, 0.5, -150)
-MainFrame.Size = UDim2.new(0, 350, 0, 400)
 MainFrame.Active = true
 MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
 
-Title.Name = "Title"
-Title.Parent = MainFrame
-Title.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-Title.Size = UDim2.new(1, 0, 0, 30)
+local TitleBar = Instance.new("Frame")
+TitleBar.Size = UDim2.new(1, 0, 0, 30)
+TitleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+TitleBar.Parent = MainFrame
+
+local Title = Instance.new("TextLabel")
+Title.Text = "TELEPORT PRO v2.0"
+Title.Size = UDim2.new(1, 0, 1, 0)
 Title.Font = Enum.Font.GothamBold
-Title.Text = "PLAYER CONTROLLER"
 Title.TextColor3 = Color3.fromRGB(0, 200, 255)
-Title.TextSize = 16
+Title.TextSize = 14
+Title.Parent = TitleBar
 
-PlayerList.Name = "PlayerList"
-PlayerList.Parent = MainFrame
-PlayerList.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-PlayerList.Position = UDim2.new(0, 5, 0, 35)
-PlayerList.Size = UDim2.new(0.45, -10, 0.7, -5)
-PlayerList.ScrollBarThickness = 5
-PlayerList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+-- Tab System
+local Tabs = {"Calculator", "Waypoints", "Settings"}
+local TabButtons = {}
+local TabFrames = {}
 
-ControlFrame.Name = "ControlFrame"
-ControlFrame.Parent = MainFrame
-ControlFrame.BackgroundTransparency = 1
-ControlFrame.Position = UDim2.new(0.5, 5, 0, 35)
-ControlFrame.Size = UDim2.new(0.5, -10, 0.7, -5)
-
--- Movement Buttons
-local buttonProps = {
-    Forward = {Text = "↑", Position = UDim2.new(0.3, 0, 0.1, 0)},
-    Backward = {Text = "↓", Position = UDim2.new(0.3, 0, 0.5, 0)},
-    Left = {Text = "←", Position = UDim2.new(0.05, 0, 0.3, 0)},
-    Right = {Text = "→", Position = UDim2.new(0.55, 0, 0.3, 0)}
-}
-
-for name, props in pairs(buttonProps) do
-    local btn = MoveButtons[name]
-    btn.Text = props.Text
-    btn.Size = UDim2.new(0.4, 0, 0.2, 0)
-    btn.Position = props.Position
-    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Parent = ControlFrame
+for i, tabName in ipairs(Tabs) do
+    local tabButton = Instance.new("TextButton")
+    tabButton.Text = tabName
+    tabButton.Size = UDim2.new(0.33, -2, 0, 30)
+    tabButton.Position = UDim2.new((i-1)*0.33, 0, 0, 30)
+    tabButton.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    tabButton.TextColor3 = Color3.fromRGB(200, 200, 200)
+    tabButton.Parent = MainFrame
+    
+    local tabFrame = Instance.new("Frame")
+    tabFrame.Size = UDim2.new(1, 0, 1, -60)
+    tabFrame.Position = UDim2.new(0, 0, 0, 60)
+    tabFrame.BackgroundTransparency = 1
+    tabFrame.Visible = i == 1
+    tabFrame.Parent = MainFrame
+    
+    TabButtons[tabName] = tabButton
+    TabFrames[tabName] = tabFrame
+    
+    tabButton.MouseButton1Click:Connect(function()
+        for _, frame in pairs(TabFrames) do
+            frame.Visible = false
+        end
+        tabFrame.Visible = true
+        for _, btn in pairs(TabButtons) do
+            btn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+        end
+        tabButton.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+    end)
 end
 
-TeleportBtn.Name = "TeleportBtn"
-TeleportBtn.Parent = MainFrame
-TeleportBtn.Text = "TELEPORT TO ME"
-TeleportBtn.Size = UDim2.new(0.45, -10, 0, 30)
-TeleportBtn.Position = UDim2.new(0, 5, 0.75, 0)
-TeleportBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
-TeleportBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+-- Calculator Tab
+local CalcFrame = TabFrames["Calculator"]
 
-FreezeBtn.Name = "FreezeBtn"
-FreezeBtn.Parent = MainFrame
-FreezeBtn.Text = "FREEZE"
-FreezeBtn.Size = UDim2.new(0.45, -10, 0, 30)
-FreezeBtn.Position = UDim2.new(0.5, 5, 0.75, 0)
-FreezeBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
-FreezeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-
-CloseBtn.Name = "CloseBtn"
-CloseBtn.Parent = MainFrame
-CloseBtn.Text = "CLOSE"
-CloseBtn.Size = UDim2.new(0.9, 0, 0, 30)
-CloseBtn.Position = UDim2.new(0.05, 0, 0.85, 0)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(80, 30, 30)
-CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-
--- Player Button Template
-local PlayerButton = Instance.new("TextButton")
-PlayerButton.Name = "PlayerButtonTemplate"
-PlayerButton.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-PlayerButton.BorderSizePixel = 0
-PlayerButton.Size = UDim2.new(1, -10, 0, 30)
-PlayerButton.Font = Enum.Font.Gotham
-PlayerButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-PlayerButton.TextSize = 14
-PlayerButton.Visible = false
-PlayerButton.Parent = PlayerList
-
--- Variables
-local SelectedPlayer = nil
-local FrozenPlayers = {}
-
--- Functions
-local function UpdatePlayerList()
-    for _, child in ipairs(PlayerList:GetChildren()) do
-        if child:IsA("TextButton") and child.Name ~= "PlayerButtonTemplate" then
-            child:Destroy()
-        end
-    end
+local function CreateInput(parent, name, yPos, defaultValue)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, -20, 0, 25)
+    frame.Position = UDim2.new(0, 10, 0, yPos)
+    frame.BackgroundTransparency = 1
+    frame.Parent = parent
     
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer then
-            local newButton = PlayerButton:Clone()
-            newButton.Name = player.Name
-            newButton.Text = player.Name
-            newButton.Visible = true
-            newButton.Parent = PlayerList
-            
-            newButton.MouseButton1Click:Connect(function()
-                SelectedPlayer = player
-                Title.Text = "CONTROLLING: " .. player.Name
-            end)
-        end
-    end
+    local label = Instance.new("TextLabel")
+    label.Text = name .. ":"
+    label.Size = UDim2.new(0.3, 0, 1, 0)
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.TextColor3 = Color3.fromRGB(200, 200, 200)
+    label.Parent = frame
+    
+    local input = Instance.new("TextBox")
+    input.Size = UDim2.new(0.7, 0, 1, 0)
+    input.Position = UDim2.new(0.3, 5, 0, 0)
+    input.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+    input.TextColor3 = Color3.white
+    input.Text = tostring(defaultValue)
+    input.PlaceholderText = name
+    input.Parent = frame
+    
+    return input
 end
 
-local function MovePlayer(direction)
-    if not SelectedPlayer or not SelectedPlayer.Character then return end
+local XInput = CreateInput(CalcFrame, "X", 10, 0)
+local YInput = CreateInput(CalcFrame, "Y", 40, 0)
+local ZInput = CreateInput(CalcFrame, "Z", 70, 0)
+local DistanceInput = CreateInput(CalcFrame, "Distance", 100, 10)
+local AngleInput = CreateInput(CalcFrame, "Angle (deg)", 130, 0)
+
+local ResultLabel = Instance.new("TextLabel")
+ResultLabel.Text = "Target Position: (0, 0, 0)"
+ResultLabel.Size = UDim2.new(1, -20, 0, 20)
+ResultLabel.Position = UDim2.new(0, 10, 0, 160)
+ResultLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+ResultLabel.TextXAlignment = Enum.TextXAlignment.Left
+ResultLabel.Parent = CalcFrame
+
+local CalculateBtn = Instance.new("TextButton")
+CalculateBtn.Text = "CALCULATE POSITION"
+CalculateBtn.Size = UDim2.new(1, -20, 0, 25)
+CalculateBtn.Position = UDim2.new(0, 10, 0, 190)
+CalculateBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 80)
+CalculateBtn.Parent = CalcFrame
+
+local TeleportBtn = Instance.new("TextButton")
+TeleportBtn.Text = "TELEPORT"
+TeleportBtn.Size = UDim2.new(1, -20, 0, 25)
+TeleportBtn.Position = UDim2.new(0, 10, 0, 220)
+TeleportBtn.BackgroundColor3 = Color3.fromRGB(120, 0, 80)
+TeleportBtn.Parent = CalcFrame
+
+-- Waypoints System
+local WaypointsFrame = TabFrames["Waypoints"]
+local WaypointsList = Instance.new("ScrollingFrame")
+WaypointsList.Size = UDim2.new(1, -20, 0.7, 0)
+WaypointsList.Position = UDim2.new(0, 10, 0, 10)
+WaypointsList.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+WaypointsList.Parent = WaypointsFrame
+
+local WaypointTemplate = Instance.new("TextButton")
+WaypointTemplate.Text = "Waypoint"
+WaypointTemplate.Size = UDim2.new(1, -10, 0, 25)
+WaypointTemplate.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+WaypointTemplate.Visible = false
+WaypointTemplate.Parent = WaypointsList
+
+local SaveCurrentBtn = Instance.new("TextButton")
+SaveCurrentBtn.Text = "SAVE CURRENT POSITION"
+SaveCurrentBtn.Size = UDim2.new(1, -20, 0, 25)
+SaveCurrentBtn.Position = UDim2.new(0, 10, 0.8, 0)
+SaveCurrentBtn.BackgroundColor3 = Color3.fromRGB(0, 80, 120)
+SaveCurrentBtn.Parent = WaypointsFrame
+
+-- Settings Tab
+local SettingsFrame = TabFrames["Settings"]
+
+local ProtectionToggle = Instance.new("TextButton")
+ProtectionToggle.Text = "ANTI-CHEAT PROTECTION: ON"
+ProtectionToggle.Size = UDim2.new(1, -20, 0, 25)
+ProtectionToggle.Position = UDim2.new(0, 10, 0, 10)
+ProtectionToggle.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
+ProtectionToggle.Parent = SettingsFrame
+
+local TeleportMethod = Instance.new("TextLabel")
+TeleportMethod.Text = "Teleport Method: CFrame"
+TeleportMethod.Size = UDim2.new(1, -20, 0, 25)
+TeleportMethod.Position = UDim2.new(0, 10, 0, 40)
+TeleportMethod.TextXAlignment = Enum.TextXAlignment.Left
+TeleportMethod.TextColor3 = Color3.fromRGB(200, 200, 200)
+TeleportMethod.Parent = SettingsFrame
+
+-- Core Functions
+local function CalculatePosition()
+    local distance = tonumber(DistanceInput.Text) or 0
+    local angle = math.rad(tonumber(AngleInput.Text) or 0
     
-    local humanoid = SelectedPlayer.Character:FindFirstChild("Humanoid")
-    local rootPart = SelectedPlayer.Character:FindFirstChild("HumanoidRootPart") or SelectedPlayer.Character:FindFirstChild("Torso")
+    local xOffset = distance * math.cos(angle)
+    local zOffset = distance * math.sin(angle)
     
-    if humanoid and rootPart then
-        local moveVector = Vector3.new(0, 0, 0)
-        
-        if direction == "Forward" then
-            moveVector = rootPart.CFrame.LookVector * 5
-        elseif direction == "Backward" then
-            moveVector = -rootPart.CFrame.LookVector * 5
-        elseif direction == "Left" then
-            moveVector = -rootPart.CFrame.RightVector * 5
-        elseif direction == "Right" then
-            moveVector = rootPart.CFrame.RightVector * 5
-        end
-        
-        rootPart.CFrame = rootPart.CFrame + moveVector
-    end
+    local x = (tonumber(XInput.Text) or 0) + xOffset
+    local y = tonumber(YInput.Text) or 0
+    local z = (tonumber(ZInput.Text) or 0) + zOffset
+    
+    return Vector3.new(x, y, z)
 end
 
-local function TeleportToMe()
-    if not SelectedPlayer or not SelectedPlayer.Character then return end
+local function SafeTeleport(position)
+    if not LocalPlayer.Character then return end
     
-    local targetRoot = SelectedPlayer.Character:FindFirstChild("HumanoidRootPart") or SelectedPlayer.Character:FindFirstChild("Torso")
-    local myRoot = LocalPlayer.Character and (LocalPlayer.Character:FindFirstChild("HumanoidRootPart") or LocalPlayer.Character:FindFirstChild("Torso"))
+    local humanoidRootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart") or LocalPlayer.Character:FindFirstChild("Torso")
+    if not humanoidRootPart then return end
     
-    if targetRoot and myRoot then
-        targetRoot.CFrame = myRoot.CFrame * CFrame.new(0, 0, -3)
-    end
-end
-
-local function ToggleFreeze()
-    if not SelectedPlayer or not SelectedPlayer.Character then return end
-    
-    local humanoid = SelectedPlayer.Character:FindFirstChild("Humanoid")
-    if humanoid then
-        if FrozenPlayers[SelectedPlayer] then
-            humanoid.WalkSpeed = 16 -- Default speed
-            FrozenPlayers[SelectedPlayer] = nil
-            FreezeBtn.Text = "FREEZE"
-        else
-            humanoid.WalkSpeed = 0
-            FrozenPlayers[SelectedPlayer] = true
-            FreezeBtn.Text = "UNFREEZE"
+    if ProtectedMode then
+        -- Gradual teleport to avoid detection
+        local startPos = humanoidRootPart.Position
+        local steps = 10
+        for i = 1, steps do
+            humanoidRootPart.CFrame = CFrame.new(startPos:Lerp(position, i/steps))
+            RunService.Heartbeat:Wait()
         end
+    else
+        -- Instant teleport
+        humanoidRootPart.CFrame = CFrame.new(position)
     end
+    
+    -- Record teleport
+    table.insert(TeleportHistory, 1, {
+        position = position,
+        time = os.time()
+    })
+    LastTeleportTime = os.time()
 end
 
 -- Button Connections
-MoveButtons.Forward.MouseButton1Click:Connect(function() MovePlayer("Forward") end)
-MoveButtons.Backward.MouseButton1Click:Connect(function() MovePlayer("Backward") end)
-MoveButtons.Left.MouseButton1Click:Connect(function() MovePlayer("Left") end)
-MoveButtons.Right.MouseButton1Click:Connect(function() MovePlayer("Right") end)
+CalculateBtn.MouseButton1Click:Connect(function()
+    local position = CalculatePosition()
+    ResultLabel.Text = string.format("Target Position: (%.1f, %.1f, %.1f)", position.X, position.Y, position.Z)
+end)
 
-TeleportBtn.MouseButton1Click:Connect(TeleportToMe)
-FreezeBtn.MouseButton1Click:Connect(ToggleFreeze)
-CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
+TeleportBtn.MouseButton1Click:Connect(function()
+    local position = CalculatePosition()
+    SafeTeleport(position)
+end)
+
+SaveCurrentBtn.MouseButton1Click:Connect(function()
+    if LocalPlayer.Character then
+        local rootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart") or LocalPlayer.Character:FindFirstChild("Torso")
+        if rootPart then
+            local waypoint = WaypointTemplate:Clone()
+            waypoint.Text = string.format("Waypoint %d", #WaypointsList:GetChildren())
+            waypoint.Position = rootPart.Position
+            waypoint.Visible = true
+            waypoint.Parent = WaypointsList
+            
+            waypoint.MouseButton1Click:Connect(function()
+                SafeTeleport(waypoint.Position)
+            end)
+        end
+    end
+end)
+
+ProtectionToggle.MouseButton1Click:Connect(function()
+    ProtectedMode = not ProtectedMode
+    ProtectionToggle.Text = "ANTI-CHEAT PROTECTION: " .. (ProtectedMode and "ON" or "OFF")
+    ProtectionToggle.BackgroundColor3 = ProtectedMode and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(100, 0, 0)
+end)
 
 -- Toggle GUI with RightShift
 UserInputService.InputBegan:Connect(function(input)
@@ -207,14 +255,9 @@ UserInputService.InputBegan:Connect(function(input)
     end
 end)
 
--- Initial Setup
-UpdatePlayerList()
-Players.PlayerAdded:Connect(UpdatePlayerList)
-Players.PlayerRemoving:Connect(UpdatePlayerList)
-
--- Notification
+-- Initialization
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Player Controller Loaded",
+    Title = "Teleport Pro Loaded",
     Text = "Press RightShift to toggle GUI",
     Duration = 5
 })
