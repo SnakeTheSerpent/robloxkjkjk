@@ -1,3 +1,4 @@
+-- Ultimate Working Teleporter with Persistent Position
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -5,127 +6,114 @@ local LocalPlayer = Players.LocalPlayer
 
 -- GUI Setup
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "UltimateTeleporter"
-ScreenGui.Parent = game.CoreGui
+ScreenGui.Name = "WorkingTeleporter"
+ScreenGui.Parent = game:GetService("CoreGui")
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 250, 0, 180)
-MainFrame.Position = UDim2.new(0.5, -125, 0.5, -90)
-MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-MainFrame.BorderSizePixel = 0
+MainFrame.Size = UDim2.new(0, 300, 0, 200)
+MainFrame.Position = UDim2.new(0.5, -150, 0.5, -100)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
 
-local TitleBar = Instance.new("Frame")
-TitleBar.Size = UDim2.new(1, 0, 0, 25)
-TitleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-TitleBar.Parent = MainFrame
-
 local Title = Instance.new("TextLabel")
-Title.Text = "ULTIMATE TELEPORTER"
-Title.Size = UDim2.new(0.8, 0, 1, 0)
+Title.Text = "WORKING TELEPORTER"
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+Title.TextColor3 = Color3.fromRGB(0, 255, 200)
 Title.Font = Enum.Font.GothamBold
-Title.TextColor3 = Color3.fromRGB(0, 200, 255)
-Title.TextSize = 14
-Title.Parent = TitleBar
-
-local MinimizeBtn = Instance.new("TextButton")
-MinimizeBtn.Text = "_"
-MinimizeBtn.Size = UDim2.new(0, 25, 1, 0)
-MinimizeBtn.Position = UDim2.new(1, -25, 0, 0)
-MinimizeBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-MinimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-MinimizeBtn.Parent = TitleBar
+Title.Parent = MainFrame
 
 local PlayerInput = Instance.new("TextBox")
-PlayerInput.PlaceholderText = "Player Name"
-PlayerInput.Size = UDim2.new(1, -20, 0, 25)
-PlayerInput.Position = UDim2.new(0, 10, 0, 30)
-PlayerInput.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+PlayerInput.PlaceholderText = "Enter Player Name"
+PlayerInput.Size = UDim2.new(1, -20, 0, 30)
+PlayerInput.Position = UDim2.new(0, 10, 0, 35)
+PlayerInput.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
 PlayerInput.TextColor3 = Color3.fromRGB(255, 255, 255)
 PlayerInput.Parent = MainFrame
 
-local TeleportToMeBtn = Instance.new("TextButton")
-TeleportToMeBtn.Text = "TELEPORT TO ME"
-TeleportToMeBtn.Size = UDim2.new(1, -20, 0, 30)
-TeleportToMeBtn.Position = UDim2.new(0, 10, 0, 60)
-TeleportToMeBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 80)
-TeleportToMeBtn.Parent = MainFrame
+local TeleportBtn = Instance.new("TextButton")
+TeleportBtn.Text = "TELEPORT TO ME + JUMP"
+TeleportBtn.Size = UDim2.new(1, -20, 0, 35)
+TeleportBtn.Position = UDim2.new(0, 10, 0, 70)
+TeleportBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
+TeleportBtn.Parent = MainFrame
 
-local TeleportToMouseBtn = Instance.new("TextButton")
-TeleportToMouseBtn.Text = "TELEPORT TO MOUSE"
-TeleportToMouseBtn.Size = UDim2.new(1, -20, 0, 30)
-TeleportToMouseBtn.Position = UDim2.new(0, 10, 0, 95)
-TeleportToMouseBtn.BackgroundColor3 = Color3.fromRGB(120, 0, 80)
-TeleportToMouseBtn.Parent = MainFrame
+local MouseTeleportBtn = Instance.new("TextButton")
+MouseTeleportBtn.Text = "TELEPORT TO MOUSE (CTRL+U)"
+MouseTeleportBtn.Size = UDim2.new(1, -20, 0, 35)
+MouseTeleportBtn.Position = UDim2.new(0, 10, 0, 110)
+MouseTeleportBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 100)
+MouseTeleportBtn.Parent = MainFrame
 
 local StatusLabel = Instance.new("TextLabel")
 StatusLabel.Text = "Status: Ready"
 StatusLabel.Size = UDim2.new(1, -20, 0, 20)
-StatusLabel.Position = UDim2.new(0, 10, 0, 130)
+StatusLabel.Position = UDim2.new(0, 10, 0, 150)
 StatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
 StatusLabel.Parent = MainFrame
 
--- Minimize Functionality
-local isMinimized = false
-MinimizeBtn.MouseButton1Click:Connect(function()
-    isMinimized = not isMinimized
-    if isMinimized then
-        MainFrame.Size = UDim2.new(0, 250, 0, 25)
-        MinimizeBtn.Text = "+"
-    else
-        MainFrame.Size = UDim2.new(0, 250, 0, 180)
-        MinimizeBtn.Text = "_"
-    end
-end)
-
 -- Core Functions
-local function UpdateStatus(message)
-    StatusLabel.Text = "Status: "..message
-    print("[Teleporter] "..message)
+local function UpdateStatus(msg)
+    StatusLabel.Text = "Status: "..msg
+    print("[Teleport] "..msg)
 end
 
-local function GetMousePosition()
+local function GetTargetPlayer(name)
+    local target = Players:FindFirstChild(name)
+    if not target then
+        UpdateStatus("Player '"..name.."' not found")
+        return nil
+    end
+    if not target.Character then
+        UpdateStatus("Target character not loaded")
+        return nil
+    end
+    local root = target.Character:FindFirstChild("HumanoidRootPart") or target.Character:FindFirstChild("Torso")
+    if not root then
+        UpdateStatus("Target has no root part")
+        return nil
+    end
+    return target, root
+end
+
+local function GetMouseTarget()
     local mouse = LocalPlayer:GetMouse()
-    local raycastParams = RaycastParams.new()
-    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
-    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-    
-    local raycastResult = workspace:Raycast(mouse.UnitRay.Origin, mouse.UnitRay.Direction * 1000, raycastParams)
-    return raycastResult and raycastResult.Position or (mouse.UnitRay.Origin + (mouse.UnitRay.Direction * 100))
+    local rayParams = RaycastParams.new()
+    rayParams.FilterDescendantsInstances = {LocalPlayer.Character}
+    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+    local rayResult = workspace:Raycast(mouse.UnitRay.Origin, mouse.UnitRay.Direction * 1000, rayParams)
+    return rayResult and rayResult.Position or (mouse.Hit.Position + Vector3.new(0, 3, 0))
 end
 
-local function ForcePosition(targetRoot, cframe)
-    -- Method 1: Standard teleport
-    targetRoot.CFrame = cframe
+local function ForceTeleport(rootPart, cframe)
+    -- Method 1: Network ownership takeover
+    pcall(function() rootPart:SetNetworkOwner(LocalPlayer) end)
     
-    -- Method 2: Velocity cancellation
-    targetRoot.Velocity = Vector3.new(0, 0, 0)
-    targetRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+    -- Method 2: Multi-stage teleport
+    for _ = 1, 3 do
+        rootPart.CFrame = cframe
+        rootPart.Velocity = Vector3.new()
+        rootPart.AssemblyLinearVelocity = Vector3.new()
+        task.wait(0.05)
+    end
     
-    -- Method 3: Network ownership
-    pcall(function()
-        targetRoot:SetNetworkOwner(LocalPlayer)
+    -- Method 3: Position enforcement
+    local enforceConnection
+    enforceConnection = RunService.Heartbeat:Connect(function()
+        rootPart.CFrame = cframe
+        rootPart.Velocity = Vector3.new()
     end)
     
-    -- Method 4: Continuous enforcement
-    local startTime = os.clock()
-    local connection
-    connection = RunService.Heartbeat:Connect(function()
-        if os.clock() - startTime > 3 then
-            connection:Disconnect()
-            return
-        end
-        targetRoot.CFrame = cframe
-        targetRoot.Velocity = Vector3.new(0, 0, 0)
-    end)
+    -- Stop enforcing after 5 seconds
+    delay(5, function() enforceConnection:Disconnect() end)
 end
 
-local function MakePlayerJump(player)
-    if player.Character then
-        local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+local function MakeJump(target)
+    if target.Character then
+        local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
         if humanoid then
             humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
             task.wait(0.1)
@@ -134,64 +122,49 @@ local function MakePlayerJump(player)
     end
 end
 
-local function TeleportPlayer(targetName, positionGetter)
-    local targetPlayer = Players:FindFirstChild(targetName)
-    if not targetPlayer then
-        UpdateStatus("Player not found!")
-        return false
+-- Button Actions
+TeleportBtn.MouseButton1Click:Connect(function()
+    local target, root = GetTargetPlayer(PlayerInput.Text)
+    if not target then return end
+    
+    if not LocalPlayer.Character then
+        UpdateStatus("Your character not loaded")
+        return
     end
-
-    if not targetPlayer.Character then
-        UpdateStatus(targetName.." has no character")
-        return false
+    
+    local yourRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart") or LocalPlayer.Character:FindFirstChild("Torso")
+    if not yourRoot then
+        UpdateStatus("You have no root part")
+        return
     end
-
-    local targetRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart") or targetPlayer.Character:FindFirstChild("Torso")
-    if not targetRoot then
-        UpdateStatus(targetName.." has no root part")
-        return false
-    end
-
-    local success, position = pcall(positionGetter)
-    if not success then
-        UpdateStatus("Position error: "..tostring(position))
-        return false
-    end
-
-    ForcePosition(targetRoot, CFrame.new(position))
-    MakePlayerJump(targetPlayer)
-    return true
-end
-
--- Button Connections
-TeleportToMeBtn.MouseButton1Click:Connect(function()
-    if TeleportPlayer(PlayerInput.Text, function()
-        if not LocalPlayer.Character then error("Your character not loaded") end
-        local yourRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart") or LocalPlayer.Character:FindFirstChild("Torso")
-        if not yourRoot then error("You have no root part") end
-        return (yourRoot.CFrame * CFrame.new(0, 0, -2)).Position
-    end) then
-        UpdateStatus("Teleported "..PlayerInput.Text.." to you!")
-    end
+    
+    local targetPos = yourRoot.CFrame * CFrame.new(0, 0, -2)
+    ForceTeleport(root, targetPos)
+    MakeJump(target)
+    UpdateStatus("Teleported "..target.Name.." to you!")
 end)
 
-TeleportToMouseBtn.MouseButton1Click:Connect(function()
-    if TeleportPlayer(PlayerInput.Text, function()
-        return GetMousePosition() + Vector3.new(0, 3, 0)
-    end) then
-        UpdateStatus("Teleported "..PlayerInput.Text.." to cursor!")
-    end
+MouseTeleportBtn.MouseButton1Click:Connect(function()
+    local target, root = GetTargetPlayer(PlayerInput.Text)
+    if not target then return end
+    
+    local mousePos = GetMouseTarget()
+    ForceTeleport(root, CFrame.new(mousePos))
+    MakeJump(target)
+    UpdateStatus("Teleported "..target.Name.." to cursor!")
 end)
 
--- Hotkey for mouse teleport (Ctrl+U)
+-- Hotkey (Ctrl+U)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.U and UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
-        if TeleportPlayer(PlayerInput.Text, function()
-            return GetMousePosition() + Vector3.new(0, 3, 0)
-        end) then
-            UpdateStatus("Hotkey: Teleported "..PlayerInput.Text.." to cursor!")
-        end
+        local target, root = GetTargetPlayer(PlayerInput.Text)
+        if not target then return end
+        
+        local mousePos = GetMouseTarget()
+        ForceTeleport(root, CFrame.new(mousePos))
+        MakeJump(target)
+        UpdateStatus("Hotkey: Teleported "..target.Name.." to cursor!")
     end
 end)
 
