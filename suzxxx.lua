@@ -1,101 +1,172 @@
--- Silent Player Controller with Minimal Alerts
-local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 
-local lastAlert = 0 -- Rate limiter
+-- GUI Setup
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "TeleportPro"
+ScreenGui.Parent = game.CoreGui
 
-local function Alert(msg)
-    if os.clock() - lastAlert < 1 then return end -- Throttle alerts
-    lastAlert = os.clock()
-    print("[CONTROL] "..msg)
-end
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 250, 0, 180)
+MainFrame.Position = UDim2.new(0.5, -125, 0.5, -90)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
 
-local function GetNearestPlayer()
-    if not LocalPlayer.Character then
-        Alert("Your character not loaded")
-        return nil
-    end
-    
-    local myRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart") or LocalPlayer.Character:FindFirstChild("Torso")
-    if not myRoot then
-        Alert("No root part found on you")
-        return nil
-    end
+local TitleBar = Instance.new("Frame")
+TitleBar.Size = UDim2.new(1, 0, 0, 25)
+TitleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+TitleBar.Parent = MainFrame
 
-    local nearestPlayer, minDist = nil, 50 -- Max distance (studs)
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character then
-            local root = player.Character:FindFirstChild("HumanoidRootPart") or player.Character:FindFirstChild("Torso")
-            if root then
-                local dist = (root.Position - myRoot.Position).Magnitude
-                if dist < minDist then
-                    minDist = dist
-                    nearestPlayer = player
-                end
-            end
-        end
-    end
-    
-    if not nearestPlayer then
-        Alert("No players nearby ("..math.floor(minDist).."++ studs)")
-    end
-    return nearestPlayer
-end
+local Title = Instance.new("TextLabel")
+Title.Text = "TELEPORT PRO"
+Title.Size = UDim2.new(0.8, 0, 1, 0)
+Title.Font = Enum.Font.GothamBold
+Title.TextColor3 = Color3.fromRGB(0, 200, 255)
+Title.TextSize = 14
+Title.Parent = TitleBar
 
-local function ControlPlayer(action)
-    local target = GetNearestPlayer()
-    if not target then return false end
-    
-    if not target.Character then
-        Alert(target.Name.." has no character")
-        return false
-    end
+local MinimizeBtn = Instance.new("TextButton")
+MinimizeBtn.Text = "_"
+MinimizeBtn.Size = UDim2.new(0, 25, 1, 0)
+MinimizeBtn.Position = UDim2.new(1, -25, 0, 0)
+MinimizeBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+MinimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinimizeBtn.Parent = TitleBar
 
-    local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
-    local root = target.Character:FindFirstChild("HumanoidRootPart") or target.Character:FindFirstChild("Torso")
-    
-    if not humanoid then
-        Alert(target.Name.." has no humanoid")
-        return false
-    end
-    
-    if not root then
-        Alert(target.Name.." has no root part")
-        return false
-    end
+local PlayerInput = Instance.new("TextBox")
+PlayerInput.PlaceholderText = "Player Name"
+PlayerInput.Size = UDim2.new(1, -20, 0, 25)
+PlayerInput.Position = UDim2.new(0, 10, 0, 30)
+PlayerInput.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+PlayerInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+PlayerInput.Parent = MainFrame
 
-    -- Execute control
-    if action == "Jump" then
-        humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-        Alert("Made "..target.Name.." jump")
-        return true
+local TeleportToMeBtn = Instance.new("TextButton")
+TeleportToMeBtn.Text = "TELEPORT TO ME"
+TeleportToMeBtn.Size = UDim2.new(1, -20, 0, 30)
+TeleportToMeBtn.Position = UDim2.new(0, 10, 0, 60)
+TeleportToMeBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 80)
+TeleportToMeBtn.Parent = MainFrame
+
+local TeleportToMouseBtn = Instance.new("TextButton")
+TeleportToMouseBtn.Text = "TELEPORT TO MOUSE (Ctrl+U)"
+TeleportToMouseBtn.Size = UDim2.new(1, -20, 0, 30)
+TeleportToMouseBtn.Position = UDim2.new(0, 10, 0, 95)
+TeleportToMouseBtn.BackgroundColor3 = Color3.fromRGB(120, 0, 80)
+TeleportToMouseBtn.Parent = MainFrame
+
+local StatusLabel = Instance.new("TextLabel")
+StatusLabel.Text = "Status: Ready"
+StatusLabel.Size = UDim2.new(1, -20, 0, 20)
+StatusLabel.Position = UDim2.new(0, 10, 0, 130)
+StatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
+StatusLabel.Parent = MainFrame
+
+-- Minimize Functionality
+local isMinimized = false
+MinimizeBtn.MouseButton1Click:Connect(function()
+    isMinimized = not isMinimized
+    if isMinimized then
+        MainFrame.Size = UDim2.new(0, 250, 0, 25)
+        MinimizeBtn.Text = "+"
     else
-        local moveDir = Vector3.new(0,0,0)
-        local speed = 12
-        
-        if action == "Forward" then moveDir = root.CFrame.LookVector * speed
-        elseif action == "Backward" then moveDir = -root.CFrame.LookVector * speed
-        elseif action == "Left" then moveDir = -root.CFrame.RightVector * speed
-        elseif action == "Right" then moveDir = root.CFrame.RightVector * speed end
-        
-        root.Velocity = Vector3.new(moveDir.X, root.Velocity.Y, moveDir.Z)
-        Alert("Moved "..target.Name.." "..action:lower())
-        return true
-    end
-end
-
--- Input handler
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    
-    if input.KeyCode == Enum.KeyCode.Up then ControlPlayer("Forward")
-    elseif input.KeyCode == Enum.KeyCode.Down then ControlPlayer("Backward")
-    elseif input.KeyCode == Enum.KeyCode.Left then ControlPlayer("Left")
-    elseif input.KeyCode == Enum.KeyCode.Right then ControlPlayer("Right")
-    elseif input.KeyCode == Enum.KeyCode.L and UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then 
-        ControlPlayer("Jump")
+        MainFrame.Size = UDim2.new(0, 250, 0, 180)
+        MinimizeBtn.Text = "_"
     end
 end)
 
-Alert("Controller ready - Arrow keys to move nearest player | Ctrl+L to jump")
+-- Core Functions
+local function UpdateStatus(message)
+    StatusLabel.Text = "Status: "..message
+    print("[TeleportPro] "..message)
+end
+
+local function MakePlayerJump(player)
+    if player.Character then
+        local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end
+end
+
+local function GetMousePosition()
+    local mouse = LocalPlayer:GetMouse()
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    
+    local raycastResult = workspace:Raycast(mouse.UnitRay.Origin, mouse.UnitRay.Direction * 1000, raycastParams)
+    return raycastResult and raycastResult.Position or (mouse.UnitRay.Origin + (mouse.UnitRay.Direction * 100))
+end
+
+local function TeleportPlayerToMe(targetName)
+    local targetPlayer = Players:FindFirstChild(targetName)
+    if not targetPlayer then
+        UpdateStatus("Player not found!")
+        return false
+    end
+
+    if not LocalPlayer.Character then
+        UpdateStatus("Your character not loaded")
+        return false
+    end
+
+    local targetRoot = targetPlayer.Character and (targetPlayer.Character:FindFirstChild("HumanoidRootPart") or targetPlayer.Character:FindFirstChild("Torso"))
+    local yourRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart") or LocalPlayer.Character:FindFirstChild("Torso")
+
+    if not (targetRoot and yourRoot) then
+        UpdateStatus("Missing root parts")
+        return false
+    end
+
+    targetRoot.CFrame = yourRoot.CFrame * CFrame.new(0, 0, -2)
+    MakePlayerJump(targetPlayer)
+    UpdateStatus("Teleported "..targetName.." to you!")
+    return true
+end
+
+local function TeleportPlayerToMouse(targetName)
+    local targetPlayer = Players:FindFirstChild(targetName)
+    if not targetPlayer then
+        UpdateStatus("Player not found!")
+        return false
+    end
+
+    local targetRoot = targetPlayer.Character and (targetPlayer.Character:FindFirstChild("HumanoidRootPart") or targetPlayer.Character:FindFirstChild("Torso"))
+    if not targetRoot then
+        UpdateStatus("Target has no root part")
+        return false
+    end
+
+    local mousePos = GetMousePosition()
+    targetRoot.CFrame = CFrame.new(mousePos + Vector3.new(0, 3, 0))
+    MakePlayerJump(targetPlayer)
+    UpdateStatus("Teleported "..targetName.." to cursor!")
+    return true
+end
+
+-- Button Connections
+TeleportToMeBtn.MouseButton1Click:Connect(function()
+    TeleportPlayerToMe(PlayerInput.Text)
+end)
+
+TeleportToMouseBtn.MouseButton1Click:Connect(function()
+    TeleportPlayerToMouse(PlayerInput.Text)
+end)
+
+-- Hotkey for mouse teleport
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.KeyCode == Enum.KeyCode.U and UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+        TeleportPlayerToMouse(PlayerInput.Text)
+    end
+end)
+
+UpdateStatus("System ready - Enter player name")
